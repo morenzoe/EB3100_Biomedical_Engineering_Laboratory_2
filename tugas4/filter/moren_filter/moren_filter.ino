@@ -4,8 +4,70 @@
 
 bool dataBaru = false;
 uint8_t counter;
-float wi, yi0, yi1=0, yi2=0, yi3=0, yi4=0, yi5=0, yi6=0, i1=0, i2=0, i3=0, i4=0, i5=0, i6=0;
-float wr, yr0, yr1=0, yr2=0, yr3=0, yr4=0, yr5=0, yr6=0, r1=0, r2=0, r3=0, r4=0, r5=0, r6=0;
+
+float vi;
+float wi;
+float yi0;
+float yi1=0, yi2=0, yi3=0, yi4=0, yi5=0, yi6=0, yi7=0, yi8=0, yi9=0, yi10=0, yi11=0, yi12=0, yi13=0, yi14=0, yi15=0;
+float i1=0, i2=0, i3=0, i4=0, i5=0, i6=0;
+
+float vr;
+float wr;
+float yr0;
+float yr1=0, yr2=0, yr3=0, yr4=0, yr5=0, yr6=0, yr7=0, yr8=0, yr9=0, yr10=0, yr11=0, yr12=0, yr13=0, yr14=0, yr15=0;
+float r1=0, r2=0, r3=0, r4=0, r5=0, r6=0;
+
+float movingAverage_ir(float value) {
+  const byte nvalues = 32;             // Moving average window size
+
+  static byte current = 0;            // Index for current value
+  static byte cvalues = 0;            // Count of values read (<= nvalues)
+  static float sum = 0;               // Rolling sum
+  static float values[nvalues];
+
+  
+  sum += value;
+
+  // If the window is full, adjust the sum by deleting the oldest value
+  if (cvalues == nvalues)
+    sum -= values[current];
+
+  values[current] = value;          // Replace the oldest with the latest
+
+  if (++current >= nvalues)
+    current = 0;
+
+  if (cvalues < nvalues)
+    cvalues += 1;
+
+  return sum/cvalues;
+}
+
+float movingAverage_red(float value) {
+  const byte nvalues = 32;             // Moving average window size
+
+  static byte current = 0;            // Index for current value
+  static byte cvalues = 0;            // Count of values read (<= nvalues)
+  static float sum = 0;               // Rolling sum
+  static float values[nvalues];
+
+  
+  sum += value;
+
+  // If the window is full, adjust the sum by deleting the oldest value
+  if (cvalues == nvalues)
+    sum -= values[current];
+
+  values[current] = value;          // Replace the oldest with the latest
+
+  if (++current >= nvalues)
+    current = 0;
+
+  if (cvalues < nvalues)
+    cvalues += 1;
+
+  return sum/cvalues;
+}
 
 void registerWrite(uint8_t regaddr, uint8_t regdata) {
   Wire.beginTransmission(I2CADDR);
@@ -61,15 +123,7 @@ void loop() {
     ir  = (data[0] << 8) | data[1];
     red = (data[2] << 8) | data[3];
 
-    // Filter FIR Window Hamming
-    // LPF
-    // y(n) = 0.022103306919670853009085575990866345819x(n) 
-    // + 0.090845885923324792843303043810010422021x(n-1) 
-    // + 0.233609522704152222649653936059621628374x(n-2) 
-    // + 0.306882568905704256057020984371774829924x(n-3) 
-    // + 0.233609522704152222649653936059621628374x(n-4) 
-    // + 0.090845885923324792843303043810010422021x(n-5) 
-    // + 0.022103306919670853009085575990866345819x(n-6)
+    // Low Pass Filter FIR Window Hamming
     yi0 = 0.022103306919670853009085575990866345819 * ir 
     + 0.090845885923324792843303043810010422021 * i1 
     + 0.233609522704152222649653936059621628374 * i2 
@@ -78,16 +132,28 @@ void loop() {
     + 0.090845885923324792843303043810010422021 * i5
     + 0.022103306919670853009085575990866345819 * i6;
     i6 = i5; i5 = i4; i4 = i3; i3 = i2; i2 = i1; i1 = ir; 
-    // HPF
-    wi = -0.000665543423242987200981468642879690378 * yi0 
-    - 0.002580454651955923529860204013175462023 * yi1 
-    - 0.006411713562822019332743117558948142687 * yi2 
-    + 0.991006395331781808621940399461891502142 * yi3 
-    - 0.006411713562822019332743117558948142687 * yi4
-    - 0.002580454651955923529860204013175462023 * yi5
-    - 0.000665543423242987200981468642879690378 * yi6;
-    yi6 = yi5; yi5 = yi4; yi4 = yi3; yi3 = yi2; yi2 = yi1; yi1 = yi0; 
+
+    // FIR Moving Average DC Removal
+    vi = movingAverage_ir(yi0);
+    wi = yi15 - vi;
+    yi15=yi14; yi14=yi13; yi13=yi12; yi12=yi11; yi11=yi10; yi10=yi9; yi9=yi8; yi8=yi7; yi7=yi6; yi6=yi5; yi5=yi4; yi4=yi3; yi3=yi2; yi2=yi1; yi1=yi0;
+
+    // Low Pass Filter FIR Window Hamming 
+    yr0 = 0.022103306919670853009085575990866345819 * red 
+    + 0.090845885923324792843303043810010422021 * r1 
+    + 0.233609522704152222649653936059621628374 * r2 
+    + 0.306882568905704256057020984371774829924 * r3 
+    + 0.233609522704152222649653936059621628374 * r4
+    + 0.090845885923324792843303043810010422021 * r5
+    + 0.022103306919670853009085575990866345819 * r6;
+    r6 = r5; r5 = r4; r4 = r3; r3 = r2; r2 = r1; r1 = red; 
+
+    // FIR Moving Average DC Removal
+    vr = movingAverage_red(yr0);
+    wr = yr15 - vr;
+    yr15=yr14; yr14=yr13; yr13=yr12; yr12=yr11; yr11=yr10; yr10=yr9; yr9=yr8; yr8=yr7; yr7=yr6; yr6=yr5; yr5=yr4; yr4=yr3; yr3=yr2; yr2=yr1; yr1=yr0; 
     
-    Serial.print(ir); Serial.print(", "); Serial.print(yi0); Serial.print(", "); Serial.println(wi);
+    //Serial.print(yi0); Serial.print(", "); Serial.println(yr0);
+    Serial.print(wi); Serial.print(", "); Serial.println(wr);
   }
 }
