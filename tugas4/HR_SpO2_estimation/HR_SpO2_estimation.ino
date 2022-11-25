@@ -318,7 +318,8 @@ void loop() {
 //          Serial.print("Ratio: ");
 //          Serial.println(R);
           Serial.print("SPO2: ");
-          Serial.println(int(spo2));//Serial.println(" % tanpa");
+          Serial.print(int(spo2));
+          Serial.println(" %");
           //Serial.print(spo2_m);Serial.println(" % moving");
         }
         else{
@@ -347,6 +348,10 @@ void loop() {
     if (peakFound){
       R = log(sqrt(redACsum/counter)) / log(sqrt(irACsum/counter));
       spo2 = 110.0 - 18.0 * R;
+      // menjaga nilai spo2 tidak lebih dari jangkauan
+      if (spo2>100){
+        spo2=100;
+      }
       spo2_m = movingAverageSpO2(spo2);
       
     }
