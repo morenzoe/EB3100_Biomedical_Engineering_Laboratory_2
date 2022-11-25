@@ -98,7 +98,7 @@ float movingAverageIR(float val) {
   
   // mereset index jika index sudah melebihi ukuran window
   if (val_idx >= win_size){
-    val_idxt = 0;
+    val_idx = 0;
   }
   
   // jika jumlah nilai yang disimpan di array kurang dari ukuran window
@@ -134,7 +134,7 @@ float movingAverageRED(float val) {
   
   // mereset index jika index sudah melebihi ukuran window
   if (val_idx >= win_size){
-    val_idxt = 0;
+    val_idx = 0;
   }
   
   // jika jumlah nilai yang disimpan di array kurang dari ukuran window
@@ -170,7 +170,7 @@ float movingAverageHR(float val) {
   
   // mereset index jika index sudah melebihi ukuran window
   if (val_idx >= win_size){
-    val_idxt = 0;
+    val_idx = 0;
   }
   
   // jika jumlah nilai yang disimpan di array kurang dari ukuran window
@@ -206,7 +206,7 @@ float movingAverageSpO2(float val) {
   
   // mereset index jika index sudah melebihi ukuran window
   if (val_idx >= win_size){
-    val_idxt = 0;
+    val_idx = 0;
   }
   
   // jika jumlah nilai yang disimpan di array kurang dari ukuran window
@@ -253,7 +253,7 @@ void loop() {
     i6 = i5; i5 = i4; i4 = i3; i3 = i2; i2 = i1; i1 = ir; 
 
     // FIR Moving Average DC Removal
-    vi = movingAverage_ir(yi0);
+    vi = movingAverageIR(yi0);
     wi = yi15 - vi;
     yi15=yi14; yi14=yi13; yi13=yi12; yi12=yi11; yi11=yi10; yi10=yi9; yi9=yi8; yi8=yi7; yi7=yi6; yi6=yi5; yi5=yi4; yi4=yi3; yi3=yi2; yi2=yi1; yi1=yi0;
 
@@ -268,7 +268,7 @@ void loop() {
     r6 = r5; r5 = r4; r4 = r3; r3 = r2; r2 = r1; r1 = red; 
 
     // FIR Moving Average DC Removal
-    vr = movingAverage_red(yr0);
+    vr = movingAverageRED(yr0);
     wr = yr15 - vr;
     yr15=yr14; yr14=yr13; yr13=yr12; yr12=yr11; yr11=yr10; yr10=yr9; yr9=yr8; yr8=yr7; yr7=yr6; yr6=yr5; yr5=yr4; yr4=yr3; yr3=yr2; yr2=yr1; yr1=yr0; 
     
@@ -310,7 +310,7 @@ void loop() {
         //itung bpm
         t_delta = t_curr - t_prev;
         t_prev = t_curr;
-        bpm = movingAverage(60000/t_delta);
+        bpm = movingAverageHR(60000/t_delta);
         
         if (bpmIdx >= 15){
           Serial.print("Heart Rate: ");
@@ -347,7 +347,7 @@ void loop() {
     if (peakFound){
       R = log(sqrt(redACsum/counter)) / log(sqrt(irACsum/counter));
       spo2 = 110.0 - 18.0 * R;
-      spo2_m = movingAverage_spo2(spo2);
+      spo2_m = movingAverageSpO2(spo2);
       
     }
 
