@@ -1,8 +1,41 @@
-#include <Wire.h>
+/*EB3100 Praktikum Teknik Biomedis 2
+ *Modul             : 4 - Estimasi HR dan SpO2
+ *Hari dan Tanggal  : Jumat, 25 November 2022
+ *Nama (NIM) 1      : Eraraya Morenzo Muten (18320003)
+ *Nama (NIM) 2      : Kayyisa Zahratulfirdaus (18320011)
+ *Nama (NIM) 3      : Rahmat Yasin (18319001)
+ *Asisten (NIM)     : Syifa Kushirayati )18319037) 
+ *Nama File         : HR_SpO2_estimation
+ *Deskripsi         : Program akan melakukan pengolahan sinyal dengan LPF FIR Hamming Window dan DC removal FIR filter
+ *                    dengan moving average. Heart rate kemudian dihitung dengan mendeteksi dan mengukur waktu antar puncak R
+ *                    gelombang PPG. SpO2 kemudian dihitung dengan perbandingan logaritma dari RMS merah dan inframerah.
+ */
 
+#include <Wire.h>
 #define I2CADDR 0x57
 
+// Deklarasi Variabel
+// Pembacaan data
 bool dataBaru = false;
+
+// Memori filter sinyal inframerah
+float vi;
+float wi;
+float yi0;
+float yi1=0, yi2=0, yi3=0, yi4=0, yi5=0, yi6=0, yi7=0, yi8=0, yi9=0, yi10=0, yi11=0, yi12=0, yi13=0, yi14=0, yi15=0;
+float i1=0, i2=0, i3=0, i4=0, i5=0, i6=0;
+
+// Memori filter sinyal merah
+float vr;
+float wr;
+float yr0;
+float yr1=0, yr2=0, yr3=0, yr4=0, yr5=0, yr6=0, yr7=0, yr8=0, yr9=0, yr10=0, yr11=0, yr12=0, yr13=0, yr14=0, yr15=0;
+float r1=0, r2=0, r3=0, r4=0, r5=0, r6=0;
+
+bool peakFound = false; bool turun = false;
+int t_prev = 0; int t_curr = 0; int t_delta = 0; float y_prev = 0; float y_curr = 0;
+float treshold = 80;
+float bpm = 0; int bpmIdx = 0;
 
 float irACsum;
 float redACsum;
@@ -10,138 +43,6 @@ uint8_t counter;
 float R;
 float spo2;
 float spo2_m;
-
-bool peakFound = false; bool turun = false;
-int t_prev = 0; int t_curr = 0; int t_delta = 0; float y_prev = 0; float y_curr = 0;
-float treshold = 80;
-float bpm = 0; int bpmIdx = 0;
-
-float vi;
-float wi;
-float yi0;
-float yi1=0, yi2=0, yi3=0, yi4=0, yi5=0, yi6=0, yi7=0, yi8=0, yi9=0, yi10=0, yi11=0, yi12=0, yi13=0, yi14=0, yi15=0;
-float i1=0, i2=0, i3=0, i4=0, i5=0, i6=0;
-
-float vr;
-float wr;
-float yr0;
-float yr1=0, yr2=0, yr3=0, yr4=0, yr5=0, yr6=0, yr7=0, yr8=0, yr9=0, yr10=0, yr11=0, yr12=0, yr13=0, yr14=0, yr15=0;
-float r1=0, r2=0, r3=0, r4=0, r5=0, r6=0;
-
-float movingAverage_ir(float val) {
-  const byte win_size = 32;   // ukuran window
-  static byte val_idx = 0;    // index nilai terbaru
-  static byte num = 0;        // jumlah elemen di dalam array yang sudah terisi
-  static float sum = 0;       // penjumlahan seluruh elemen
-  static float win[win_size]; // array untuk menyimpan nilai yang berada di dalam window
-  
-  // menjumlahkan nilai terbaru ke variabel jumlah
-  sum += val; 
-
-  // secara FIFO, nilai yang pertama masuk akan dikeluarkan dari array
-  if (num == win_size){
-    // penjumlahan elemen array dikurangi dengan nilai yang dikeluarkan
-    sum -= values[current];
-  }
-  
-  // mengganti elemen di index nilai sekarang dengan nilai terbaru
-  win[val_idx] = val;        
-
-  // menambah index nilai terbaru
-  val_idx += 1;
-  
-  // mereset index jika index sudah melebihi ukuran window
-  if (val_idx >= win_size){
-    val_idxt = 0;
-  }
-  
-  // jika jumlah nilai yang disimpan di array kurang dari ukuran window
-  if (num < win_size){
-    // tambahkan jumlah elemen tersebut sehingga pembagian sesuai 
-    num += 1;
-  }
-  
-  return sum/num;
-}
-
-float movingAverage_red(float value) {
-  const byte nvalues = 32;             // Moving average window size
-
-  static byte current = 0;            // Index for current value
-  static byte cvalues = 0;            // Count of values read (<= nvalues)
-  static float sum = 0;               // Rolling sum
-  static float values[nvalues];
-
-  
-  sum += value;
-
-  // If the window is full, adjust the sum by deleting the oldest value
-  if (cvalues == nvalues)
-    sum -= values[current];
-
-  values[current] = value;          // Replace the oldest with the latest
-
-  if (++current >= nvalues)
-    current = 0;
-
-  if (cvalues < nvalues)
-    cvalues += 1;
-
-  return sum/cvalues;
-}
-
-// Moving Average
-float movingAverage(float value) {
-  const byte nvalues = 10;             // Moving average window size
-
-  static byte current = 0;            // Index for current value
-  static byte cvalues = 0;            // Count of values read (<= nvalues)
-  static float sum = 0;               // Rolling sum
-  static float values[nvalues];
-
-  sum += value;
-
-  // If the window is full, adjust the sum by deleting the oldest value
-  if (cvalues == nvalues)
-    sum -= values[current];
-
-  values[current] = value;          // Replace the oldest with the latest
-
-  if (++current >= nvalues)
-    current = 0;
-
-  if (cvalues < nvalues)
-    cvalues += 1;
-
-  return sum/cvalues;
-}
-
-// Moving Average
-float movingAverage_spo2(float value) {
-  const byte nvalues = 10;             // Moving average window size
-
-  static byte current = 0;            // Index for current value
-  static byte cvalues = 0;            // Count of values read (<= nvalues)
-  static float sum = 0;               // Rolling sum
-  static float values[nvalues];
-
-  sum += value;
-
-  // If the window is full, adjust the sum by deleting the oldest value
-  if (cvalues == nvalues)
-    sum -= values[current];
-
-  values[current] = value;          // Replace the oldest with the latest
-
-  if (++current >= nvalues)
-    current = 0;
-
-  if (cvalues < nvalues)
-    cvalues += 1;
-
-  return sum/cvalues;
-}
-
 
 void registerWrite(uint8_t regaddr, uint8_t regdata) {
   Wire.beginTransmission(I2CADDR);
@@ -171,6 +72,150 @@ void dataRead(uint8_t *FIFOdata) {
 
 void adaDataBaru() {
   dataBaru = true;
+}
+
+float movingAverageIR(float val) {
+  const byte win_size = 32;   // ukuran window
+  static byte val_idx = 0;    // index nilai terbaru
+  static byte num = 0;        // jumlah elemen di dalam array yang sudah terisi
+  static float sum = 0;       // penjumlahan seluruh elemen
+  static float win[win_size]; // array untuk menyimpan nilai yang berada di dalam window
+  
+  // menjumlahkan nilai terbaru ke variabel jumlah
+  sum += val; 
+
+  // secara FIFO, nilai yang pertama masuk akan dikeluarkan dari array
+  if (num == win_size){
+    // penjumlahan elemen array dikurangi dengan nilai yang dikeluarkan
+    sum -= win[val_idx];
+  }
+  
+  // mengganti elemen di index nilai sekarang dengan nilai terbaru
+  win[val_idx] = val;        
+
+  // menambah index nilai terbaru
+  val_idx += 1;
+  
+  // mereset index jika index sudah melebihi ukuran window
+  if (val_idx >= win_size){
+    val_idxt = 0;
+  }
+  
+  // jika jumlah nilai yang disimpan di array kurang dari ukuran window
+  if (num < win_size){
+    // tambahkan jumlah elemen tersebut sehingga pembagian sesuai 
+    num += 1;
+  }
+  
+  return sum/num;
+}
+
+float movingAverageRED(float val) {
+  const byte win_size = 32;   // ukuran window
+  static byte val_idx = 0;    // index nilai terbaru
+  static byte num = 0;        // jumlah elemen di dalam array yang sudah terisi
+  static float sum = 0;       // penjumlahan seluruh elemen
+  static float win[win_size]; // array untuk menyimpan nilai yang berada di dalam window
+  
+  // menjumlahkan nilai terbaru ke variabel jumlah
+  sum += val; 
+
+  // secara FIFO, nilai yang pertama masuk akan dikeluarkan dari array
+  if (num == win_size){
+    // penjumlahan elemen array dikurangi dengan nilai yang dikeluarkan
+    sum -= win[val_idx];
+  }
+  
+  // mengganti elemen di index nilai sekarang dengan nilai terbaru
+  win[val_idx] = val;        
+
+  // menambah index nilai terbaru
+  val_idx += 1;
+  
+  // mereset index jika index sudah melebihi ukuran window
+  if (val_idx >= win_size){
+    val_idxt = 0;
+  }
+  
+  // jika jumlah nilai yang disimpan di array kurang dari ukuran window
+  if (num < win_size){
+    // tambahkan jumlah elemen tersebut sehingga pembagian sesuai 
+    num += 1;
+  }
+  
+  return sum/num;
+}
+
+float movingAverageHR(float val) {
+  const byte win_size = 10;   // ukuran window
+  static byte val_idx = 0;    // index nilai terbaru
+  static byte num = 0;        // jumlah elemen di dalam array yang sudah terisi
+  static float sum = 0;       // penjumlahan seluruh elemen
+  static float win[win_size]; // array untuk menyimpan nilai yang berada di dalam window
+  
+  // menjumlahkan nilai terbaru ke variabel jumlah
+  sum += val; 
+
+  // secara FIFO, nilai yang pertama masuk akan dikeluarkan dari array
+  if (num == win_size){
+    // penjumlahan elemen array dikurangi dengan nilai yang dikeluarkan
+    sum -= win[val_idx];
+  }
+  
+  // mengganti elemen di index nilai sekarang dengan nilai terbaru
+  win[val_idx] = val;        
+
+  // menambah index nilai terbaru
+  val_idx += 1;
+  
+  // mereset index jika index sudah melebihi ukuran window
+  if (val_idx >= win_size){
+    val_idxt = 0;
+  }
+  
+  // jika jumlah nilai yang disimpan di array kurang dari ukuran window
+  if (num < win_size){
+    // tambahkan jumlah elemen tersebut sehingga pembagian sesuai 
+    num += 1;
+  }
+  
+  return sum/num;
+}
+
+float movingAverageSpO2(float val) {
+  const byte win_size = 10;   // ukuran window
+  static byte val_idx = 0;    // index nilai terbaru
+  static byte num = 0;        // jumlah elemen di dalam array yang sudah terisi
+  static float sum = 0;       // penjumlahan seluruh elemen
+  static float win[win_size]; // array untuk menyimpan nilai yang berada di dalam window
+  
+  // menjumlahkan nilai terbaru ke variabel jumlah
+  sum += val; 
+
+  // secara FIFO, nilai yang pertama masuk akan dikeluarkan dari array
+  if (num == win_size){
+    // penjumlahan elemen array dikurangi dengan nilai yang dikeluarkan
+    sum -= win[val_idx];
+  }
+  
+  // mengganti elemen di index nilai sekarang dengan nilai terbaru
+  win[val_idx] = val;        
+
+  // menambah index nilai terbaru
+  val_idx += 1;
+  
+  // mereset index jika index sudah melebihi ukuran window
+  if (val_idx >= win_size){
+    val_idxt = 0;
+  }
+  
+  // jika jumlah nilai yang disimpan di array kurang dari ukuran window
+  if (num < win_size){
+    // tambahkan jumlah elemen tersebut sehingga pembagian sesuai 
+    num += 1;
+  }
+  
+  return sum/num;
 }
 
 void setup() {
