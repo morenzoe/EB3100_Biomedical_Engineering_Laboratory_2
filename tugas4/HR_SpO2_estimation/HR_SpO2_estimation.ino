@@ -32,11 +32,13 @@ float yr0;
 float yr1=0, yr2=0, yr3=0, yr4=0, yr5=0, yr6=0, yr7=0, yr8=0, yr9=0, yr10=0, yr11=0, yr12=0, yr13=0, yr14=0, yr15=0;
 float r1=0, r2=0, r3=0, r4=0, r5=0, r6=0;
 
+// Perhitungan heart rate
 bool peakFound = false; bool turun = false;
 int t_prev = 0; int t_curr = 0; int t_delta = 0; float y_prev = 0; float y_curr = 0;
 float treshold = 80;
 float bpm = 0; int bpmIdx = 0;
 
+// Perhitungan SpO2
 float irACsum;
 float redACsum;
 uint8_t counter;
@@ -44,6 +46,7 @@ float R;
 float spo2;
 float spo2_m;
 
+// Deklarasi Fungsi
 void registerWrite(uint8_t regaddr, uint8_t regdata) {
   Wire.beginTransmission(I2CADDR);
   Wire.write(regaddr);
@@ -74,6 +77,7 @@ void adaDataBaru() {
   dataBaru = true;
 }
 
+// Fungsi moving average inframerah
 float movingAverageIR(float val) {
   const byte win_size = 32;   // ukuran window
   static byte val_idx = 0;    // index nilai terbaru
@@ -110,6 +114,7 @@ float movingAverageIR(float val) {
   return sum/num;
 }
 
+// Fungsi moving average merah
 float movingAverageRED(float val) {
   const byte win_size = 32;   // ukuran window
   static byte val_idx = 0;    // index nilai terbaru
@@ -146,6 +151,7 @@ float movingAverageRED(float val) {
   return sum/num;
 }
 
+// Fungsi moving average heart rate
 float movingAverageHR(float val) {
   const byte win_size = 10;   // ukuran window
   static byte val_idx = 0;    // index nilai terbaru
@@ -182,6 +188,7 @@ float movingAverageHR(float val) {
   return sum/num;
 }
 
+// Fungsi moving average SpO2
 float movingAverageSpO2(float val) {
   const byte win_size = 10;   // ukuran window
   static byte val_idx = 0;    // index nilai terbaru
@@ -272,72 +279,52 @@ void loop() {
     wr = yr15 - vr;
     yr15=yr14; yr14=yr13; yr13=yr12; yr12=yr11; yr11=yr10; yr10=yr9; yr9=yr8; yr8=yr7; yr7=yr6; yr6=yr5; yr5=yr4; yr4=yr3; yr3=yr2; yr2=yr1; yr1=yr0; 
     
-    //Serial.print(yi0); Serial.print(", "); Serial.println(yr0);
-    //Serial.print(ir-30000); Serial.print(", "); Serial.println(wi);
-
-      //HR Detection
-   y_curr = (wi);
-   //Serial.print(peakFound); Serial.print('\t'); Serial.print(treshold); Serial.print('\t'); Serial.print(y_prev); Serial.print('\t'); Serial.println(y_curr);
-
-   
-   if (y_curr < treshold){
-    //Serial.println("di bawah threshold");
-    //Di bawah treshold dan turun
-    if (y_curr < y_prev){ 
-      turun = true;
-      peakFound = false;
-    }
-    //Di bawah treshold dan naik
-    else{
-      turun = false;
-      //Serial.println(turun);
-    }
-    y_prev = y_curr;
-   }
-   
-   else if ((y_curr >= treshold) && (peakFound == false)){
-    //Serial.println("Masuk treshold");
+    //HR Detection
+    y_curr = (wi);
+ 
+    if (y_curr < treshold){
+      //Di bawah treshold dan turun
+      if (y_curr < y_prev){ 
+        turun = true;
+        peakFound = false;
+      } else{
+        //Di bawah treshold dan naik
+        turun = false;
+      }
+      
+      y_prev = y_curr;
+   } else if ((y_curr >= treshold) && (peakFound == false)){
       if (y_curr < y_prev){
-        //Serial.println("Peak Found!");
         t_curr = millis();
         y_prev = y_curr;
         peakFound = true;
         bpmIdx++;
         turun = true;
-        //Serial.println(turun);
 
-        
-        //itung bpm
+        //Hitung bpm
         t_delta = t_curr - t_prev;
         t_prev = t_curr;
         bpm = movingAverageHR(60000/t_delta);
         
         if (bpmIdx >= 15){
           Serial.print("Heart Rate: ");
-          Serial.println(int(bpm));
-//          Serial.print("Ratio: ");
-//          Serial.println(R);
-          Serial.print("SPO2: ");
+          Serial.print(int(bpm));
+          Serial.println(" bpm");
+          Serial.print("SpO2: ");
           Serial.print(int(spo2));
           Serial.println(" %");
-          //Serial.print(spo2_m);Serial.println(" % moving");
-        }
-        else{
+        } else{
           Serial.println("Please wait, still processing");
         }
-        
         
       }
       else{
         y_prev = y_curr;
-        //Serial.println("Gaketemu :(");
       }
    }
 
    else if ((y_curr >= treshold) && (peakFound == true)){
     y_prev = y_curr;
-    //Serial.println("Masuk treshold tapi dah lewat");
-    
    }
 
     //SpO2 calculation
@@ -361,7 +348,5 @@ void loop() {
       redACsum = 0;
       counter = 0;
     }
-    
     }
-    
   }
