@@ -28,30 +28,40 @@ float yr0;
 float yr1=0, yr2=0, yr3=0, yr4=0, yr5=0, yr6=0, yr7=0, yr8=0, yr9=0, yr10=0, yr11=0, yr12=0, yr13=0, yr14=0, yr15=0;
 float r1=0, r2=0, r3=0, r4=0, r5=0, r6=0;
 
-float movingAverage_ir(float value) {
-  const byte nvalues = 32;             // Moving average window size
-
-  static byte current = 0;            // Index for current value
-  static byte cvalues = 0;            // Count of values read (<= nvalues)
-  static float sum = 0;               // Rolling sum
-  static float values[nvalues];
-
+float movingAverage_ir(float val) {
+  const byte win_size = 32;   // ukuran window
+  static byte val_idx = 0;    // index nilai terbaru
+  static byte num = 0;        // jumlah elemen di dalam array yang sudah terisi
+  static float sum = 0;       // penjumlahan seluruh elemen
+  static float win[win_size]; // array untuk menyimpan nilai yang berada di dalam window
   
-  sum += value;
+  // menjumlahkan nilai terbaru ke variabel jumlah
+  sum += val; 
 
-  // If the window is full, adjust the sum by deleting the oldest value
-  if (cvalues == nvalues)
+  // secara FIFO, nilai yang pertama masuk akan dikeluarkan dari array
+  if (num == win_size){
+    // penjumlahan elemen array dikurangi dengan nilai yang dikeluarkan
     sum -= values[current];
+  }
+  
+  // mengganti elemen di index nilai sekarang dengan nilai terbaru
+  win[val_idx] = val;        
 
-  values[current] = value;          // Replace the oldest with the latest
-
-  if (++current >= nvalues)
-    current = 0;
-
-  if (cvalues < nvalues)
-    cvalues += 1;
-
-  return sum/cvalues;
+  // menambah index nilai terbaru
+  val_idx += 1;
+  
+  // mereset index jika index sudah melebihi ukuran window
+  if (val_idx >= win_size){
+    val_idxt = 0;
+  }
+  
+  // jika jumlah nilai yang disimpan di array kurang dari ukuran window
+  if (num < win_size){
+    // tambahkan jumlah elemen tersebut sehingga pembagian sesuai 
+    num += 1;
+  }
+  
+  return sum/num;
 }
 
 float movingAverage_red(float value) {
