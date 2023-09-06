@@ -46,7 +46,7 @@ void setup() {
   registerWrite(0x06, B00000011); // SpO2 mode
   registerWrite(0x07, B00000011); // 50 sps ADC, 1600 us pulse width
   //registerWrite(0x09, B01110111); // 24.0 mA RED, 24.0 mA IR
-  registerWrite(0x09, B10011011); // 30.6 mA RED, 37.0 mA IR
+  registerWrite(0x09, B10011001); // 30.6 mA RED, 37.0 mA IR
   attachInterrupt(digitalPinToInterrupt(2), adaDataBaru, FALLING );
   registerRead(0x00);
   counter = 0;

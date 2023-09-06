@@ -71,7 +71,7 @@ void loop() {
       yi2 = yi1; i2 = i1; yi1 = yi0; i1 = ir;
       yr0 = (1.692*yr1) - (0.742*yr2) + red - r2;
       yr2 = yr1; r2 = r1; yr1 = yr0; r1 = red;
-      Serial.print(-yi0); Serial.print('\t'); Serial.println(-yr0);
+      Serial.print(-yi0); Serial.print('\t'); Serial.println(ir-60000);
     }
   }
 }

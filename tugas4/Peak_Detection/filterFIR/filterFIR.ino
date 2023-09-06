@@ -218,7 +218,7 @@ void loop() {
     yr15=yr14; yr14=yr13; yr13=yr12; yr12=yr11; yr11=yr10; yr10=yr9; yr9=yr8; yr8=yr7; yr7=yr6; yr6=yr5; yr5=yr4; yr4=yr3; yr3=yr2; yr2=yr1; yr1=yr0; 
     
     //Serial.print(yi0); Serial.print(", "); Serial.println(yr0);
-    //Serial.print(ir-30000); Serial.print(", "); Serial.println(wi);
+    //Serial.print(80); Serial.print(", "); Serial.print(peakFound*300); Serial.print(", "); Serial.println(wi);
 
       //HR Detection
    y_curr = (wi);
